@@ -16,8 +16,10 @@ import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import { InlineMath, BlockMath } from 'react-katex'
 import ChatMessage from './components/ChatMessage';
+import { PlotParams } from 'react-plotly.js'
+import './plot-styles.css'
 
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false }) as React.ComponentType<PlotParams>
 
 const ThinkingMessage = () => {
   const [dots, setDots] = useState('');
@@ -106,11 +108,11 @@ export default function Home() {
           ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2" {...props} />,
           ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2" {...props} />,
           blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-2" {...props} />,
-          code: ({ node, inline, ...props }) => 
+          code: ({ node, inline, ...props }: { node: any; inline?: boolean; [key: string]: any }) =>
             inline ? (
               <code className="bg-gray-200 dark:bg-gray-700 rounded px-1" {...props} />
             ) : (
-              <pre className="bg-gray-200 dark:bg-gray-700 rounded p-2 overflow-x-auto mb-2">
+              <pre className="bg-gray-100 dark:bg-gray-800 overflow-x-auto p-4 rounded">
                 <code {...props} />
               </pre>
             ),

@@ -1,0 +1,9 @@
+.plot-container.plotly {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.js-plotly-plot {
+  width: 100% !important;
+  height: 100% !important;
+}
