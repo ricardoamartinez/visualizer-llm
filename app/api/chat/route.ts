@@ -99,76 +99,81 @@ async function generateAndRunCode(task: string, errorMessage: string | null = nu
 }
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
-
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { 
-          role: "system", 
-          content: "You are a helpful AI assistant that can generate interactive visualizations and images of all types (2D and 3D). All visuals are automatically shown to the user in the panel on the right. Always use the generate_visualization function when a user asks for a chart or visualization. Do not mention code, programming languages, or technical details in your responses. Focus on describing the visualization and its interactive features."
-        },
-        ...messages
-      ],
-      functions: functions,
-      function_call: { name: "generate_visualization" },
-    })
+    const { messages } = await req.json()
 
-    const responseMessage = response.choices[0].message
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { 
+            role: "system", 
+            content: "You are a helpful AI assistant that can generate interactive visualizations and images of all types (2D and 3D). All visuals are automatically shown to the user in the panel on the right. Always use the generate_visualization function when a user asks for a chart or visualization. Do not mention code, programming languages, or technical details in your responses. Focus on describing the visualization and its interactive features."
+          },
+          ...messages
+        ],
+        functions: functions,
+        function_call: { name: "generate_visualization" },
+      })
 
-    if (responseMessage.function_call) {
-      const functionName = responseMessage.function_call.name
-      const functionArgs = JSON.parse(responseMessage.function_call.arguments)
+      const responseMessage = response.choices[0].message
 
-      if (functionName === 'generate_visualization') {
-        let result = await generateAndRunCode(functionArgs.task);
-        let attempts = 1;
+      if (responseMessage.function_call) {
+        const functionName = responseMessage.function_call.name
+        const functionArgs = JSON.parse(responseMessage.function_call.arguments)
 
-        while (!result.visualizationData && attempts < 3) {
-          result = await generateAndRunCode(functionArgs.task, result.error);
-          attempts++;
+        if (functionName === 'generate_visualization') {
+          let result = await generateAndRunCode(functionArgs.task);
+          let attempts = 1;
+
+          while (!result.visualizationData && attempts < 3) {
+            result = await generateAndRunCode(functionArgs.task, result.error);
+            attempts++;
+          }
+
+          let finalResponse;
+          if (result.visualizationData) {
+            finalResponse = await openai.chat.completions.create({
+              model: "gpt-4o-mini",
+              messages: [
+                ...messages,
+                responseMessage,
+                {
+                  role: "function",
+                  name: "generate_visualization",
+                  content: "Interactive visualization generated successfully.",
+                },
+              ],
+            });
+          } else {
+            finalResponse = await openai.chat.completions.create({
+              model: "gpt-4o-mini",
+              messages: [
+                ...messages,
+                responseMessage,
+                {
+                  role: "function",
+                  name: "generate_visualization",
+                  content: `Failed to generate visualization after ${attempts} attempts.`,
+                },
+              ],
+            });
+          }
+
+          return NextResponse.json({ 
+            response: finalResponse.choices[0].message.content,
+            visualizationData: result.visualizationData
+          })
         }
-
-        let finalResponse;
-        if (result.visualizationData) {
-          finalResponse = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-              ...messages,
-              responseMessage,
-              {
-                role: "function",
-                name: "generate_visualization",
-                content: "Interactive visualization generated successfully.",
-              },
-            ],
-          });
-        } else {
-          finalResponse = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-              ...messages,
-              responseMessage,
-              {
-                role: "function",
-                name: "generate_visualization",
-                content: `Failed to generate visualization after ${attempts} attempts.`,
-              },
-            ],
-          });
-        }
-
-        return NextResponse.json({ 
-          response: finalResponse.choices[0].message.content,
-          visualizationData: result.visualizationData
-        })
       }
-    }
 
-    return NextResponse.json({ response: responseMessage.content })
+      return NextResponse.json({ response: responseMessage.content })
+    } catch (error) {
+      console.error('Error in /api/chat:', error)
+      return NextResponse.json({ error: 'An error occurred while processing your request.' }, { status: 500 })
+    }
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error in /api/chat:', error)
     return NextResponse.json({ error: 'An error occurred while processing your request.' }, { status: 500 })
   }
 }
