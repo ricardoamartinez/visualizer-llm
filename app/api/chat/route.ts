@@ -99,8 +99,12 @@ async function generateAndRunCode(task: string, errorMessage: string | null = nu
 }
 
 export async function POST(req: Request) {
+  console.log('API route started');
+  const startTime = Date.now();
+
   try {
     const { messages } = await req.json()
+    console.log('Request parsed');
 
     try {
       const response = await openai.chat.completions.create({
@@ -173,7 +177,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'An error occurred while processing your request.' }, { status: 500 })
     }
   } catch (error) {
-    console.error('Error in /api/chat:', error)
+    console.error(`Error in /api/chat after ${Date.now() - startTime}ms:`, error)
     return NextResponse.json({ error: 'An error occurred while processing your request.' }, { status: 500 })
   }
 }
